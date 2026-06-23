@@ -23,7 +23,7 @@ class Config:
     hidden_dim: int = 64
     lr: float = 1e-3
     weight_decay: float = 1e-4
-    epochs: int = 100
+    epochs: int = 30
     patience: int = 15
 
     train_batch_size: int = 512
@@ -56,15 +56,15 @@ def train_epoch(model, loader, optimizer, device):
         instability = out["instability"]
         entropy = out["entropy"]
         response = out["response"]
-        halo = out["halo"]
+        discrepancy = out["discrepancy"]
 
-        # 低 HALO 节点 = 更可能正常
-        low_thresh = torch.quantile(halo.detach(), 0.3)
-        normal_mask = halo <= low_thresh
+        # 低 discrepancy 节点 = 更可能正常
+        low_thresh = torch.quantile(discrepancy.detach(), 0.3)
+        normal_mask = discrepancy <= low_thresh
 
         # 防止极端 batch 没有节点
         if normal_mask.sum() < 10:
-            normal_mask = halo <= halo.median()
+            normal_mask = discrepancy <= discrepancy.median()
 
         # 只稳定 pseudo-normal nodes
         loss_stable = instability[normal_mask].mean()

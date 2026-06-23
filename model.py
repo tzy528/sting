@@ -106,7 +106,7 @@ class ResponseSampler(nn.Module):
 
 
 # ============================================================
-# Relative Local Instability & HALO (大图修正版)
+# Relative Local Instability & response-neighborhood discrepancy (大图修正版)
 # ============================================================
 def compute_relative_instability(instability, edge_index, num_nodes):
     row, col = edge_index
@@ -115,12 +115,12 @@ def compute_relative_instability(instability, edge_index, num_nodes):
     return relative_dev
 
 
-def compute_response_halo(response, edge_index, num_nodes):
+def compute_response_discrepancy(response, edge_index, num_nodes):
     row, col = edge_index
     response = F.normalize(response, p=2, dim=1)
     sim = (response[row] * response[col]).sum(dim=1)
-    halo = scatter_mean(1.0 - sim, row, dim=0, dim_size=num_nodes)
-    return halo
+    discrepancy = scatter_mean(1.0 - sim, row, dim=0, dim_size=num_nodes)
+    return discrepancy
 
 
 # ============================================================
@@ -145,7 +145,7 @@ class StabilityGraphAD(nn.Module):
         h, spectral_conflict = self.spectral(x, edge_index, num_nodes)
         response, instability, entropy = self.sampler(h, edge_index, norm, num_nodes)
         local_dev = compute_relative_instability(instability, edge_index, num_nodes)
-        halo = compute_response_halo(response, edge_index, num_nodes)
+        discrepancy = compute_response_discrepancy(response, edge_index, num_nodes)
 
         score = (
             0.60 * spectral_conflict
@@ -159,7 +159,7 @@ class StabilityGraphAD(nn.Module):
             "spectral": spectral_conflict[:batch_size],
             "instability": instability[:batch_size],
             "local_dev": local_dev[:batch_size],
-            "halo": halo[:batch_size],
+            "discrepancy": discrepancy[:batch_size],
             "entropy": entropy[:batch_size],
             "response": response[:batch_size],
         }
